@@ -28,13 +28,13 @@ internal fun SourceId.needsKey() =
 internal fun SourceId.empty(message: String = "No results.") =
     SourceResult(this, SourceStatus.EMPTY, message = message)
 
-internal fun SourceId.error(message: String) =
+internal fun SourceId.failed(message: String) =
     SourceResult(this, SourceStatus.ERROR, message = message)
 
 internal fun SourceId.httpError(code: Int) = when (code) {
-    401, 403 -> error("Access denied (HTTP $code). Check the key, or the service is blocking this request.")
-    429 -> error("Rate limited (HTTP 429). Try again later.")
-    else -> error("Request failed (HTTP $code).")
+    401, 403 -> failed("Access denied (HTTP $code). Check the key, or the service is blocking this request.")
+    429 -> failed("Rate limited (HTTP 429). Try again later.")
+    else -> failed("Request failed (HTTP $code).")
 }
 
 /** Carrier / line-type lookup. Free tier: 100 requests a month. */
@@ -64,7 +64,7 @@ object NumverifySource : OsintSource {
             if (response.code != 200) return id.httpError(response.code)
 
             json.optJSONObject("error")?.let { err ->
-                return id.error(err.optString("info").ifBlank { "Numverify error ${err.optInt("code")}." })
+                return id.failed(err.optString("info").ifBlank { "Numverify error ${err.optInt("code")}." })
             }
             if (!json.optBoolean("valid", false)) {
                 return id.empty("Numverify considers this number invalid.")
@@ -79,7 +79,7 @@ object NumverifySource : OsintSource {
             if (facts.isEmpty()) id.empty("Valid, but no extra detail returned.")
             else SourceResult(id, SourceStatus.OK, facts = facts)
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
@@ -140,7 +140,7 @@ object HudsonRockSource : OsintSource {
                 message = json.optString("message").ifBlank { null }
             )
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
@@ -187,7 +187,7 @@ object DuckDuckGoSource : OsintSource {
             if (findings.isEmpty()) id.empty("No instant answer for this number.")
             else SourceResult(id, SourceStatus.OK, findings = findings)
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
@@ -229,7 +229,7 @@ object RedditSource : OsintSource {
 
             if (findings.isEmpty()) id.empty() else SourceResult(id, SourceStatus.OK, findings = findings)
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
@@ -273,7 +273,7 @@ object GitHubSource : OsintSource {
 
             if (findings.isEmpty()) id.empty() else SourceResult(id, SourceStatus.OK, findings = findings)
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
@@ -300,9 +300,9 @@ object SerpApiSource : OsintSource {
             val json = runCatching { JSONObject(response.body) }.getOrNull()
             if (response.code != 200) {
                 val detail = json?.optString("error")?.ifBlank { null }
-                return id.error(detail ?: "Request failed (HTTP ${response.code}).")
+                return id.failed(detail ?: "Request failed (HTTP ${response.code}).")
             }
-            json ?: return id.error("Unexpected response from SerpAPI.")
+            json ?: return id.failed("Unexpected response from SerpAPI.")
 
             val organic = json.optJSONArray("organic_results") ?: return id.empty()
             val findings = (0 until organic.length()).mapNotNull { i ->
@@ -326,7 +326,7 @@ object SerpApiSource : OsintSource {
             if (findings.isEmpty()) id.empty("No result contained the number verbatim.")
             else SourceResult(id, SourceStatus.OK, findings = findings)
         } catch (e: Exception) {
-            id.error(e.friendly())
+            id.failed(e.friendly())
         }
     }
 }
