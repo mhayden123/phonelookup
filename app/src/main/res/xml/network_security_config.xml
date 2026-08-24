@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Everything is HTTPS by default. -->
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- Numverify's free plan rejects HTTPS, so allow plain HTTP for that host
+         only. The request carries just the phone number and the user's own key. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">apilayer.net</domain>
+    </domain-config>
+</network-security-config>
