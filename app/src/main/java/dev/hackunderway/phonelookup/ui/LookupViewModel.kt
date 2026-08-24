@@ -72,7 +72,7 @@ class LookupViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun deviceRegion(): String {
-        val context: Context = getApplication()
+        val context: Context = getApplication<Application>()
         val telephony = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
         val fromSim = telephony?.simCountryIso?.takeIf { it.isNotBlank() }
             ?: telephony?.networkCountryIso?.takeIf { it.isNotBlank() }

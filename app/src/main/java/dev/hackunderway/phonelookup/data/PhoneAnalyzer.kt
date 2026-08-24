@@ -69,7 +69,7 @@ object PhoneAnalyzer {
         PhoneNumberUtil.PhoneNumberType.PAGER -> "Pager"
         PhoneNumberUtil.PhoneNumberType.UAN -> "Universal access number"
         PhoneNumberUtil.PhoneNumberType.VOICEMAIL -> "Voicemail"
-        PhoneNumberUtil.PhoneNumberType.UNKNOWN -> "Unknown"
+        else -> "Unknown"
     }
 
     private fun friendlyParseError(e: NumberParseException): String = when (e.errorType) {
