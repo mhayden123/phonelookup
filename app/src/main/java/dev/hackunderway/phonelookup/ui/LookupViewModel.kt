@@ -110,38 +110,44 @@ class LookupViewModel(application: Application) : AndroidViewModel(application) 
     fun analyze() {
         val current = _state.value
         val region = current.region?.code ?: "US"
-        if (current.number.isBlank()) return
+        val number = current.number
+        if (number.isBlank()) return
 
         searchJob?.cancel()
 
-        val info = OsintEngine.analyzeOffline(current.number, region)
         val pending = OsintEngine.sourceIds().associateWith { SourceResult(it, SourceStatus.LOADING) }
         _state.update {
             it.copy(
-                phoneInfo = info,
+                phoneInfo = null,
                 sources = pending,
                 running = true,
                 startedAtMillis = System.currentTimeMillis()
             )
         }
 
-        history.add(
-            HistoryEntry(
-                number = info.input,
-                region = region,
-                label = info.international ?: info.input,
-                timestampMillis = System.currentTimeMillis()
-            )
-        )
-        _state.update { it.copy(history = history.entries()) }
-
-        val keys = ApiKeys(
-            numverify = settings.numverifyKey,
-            serpApi = settings.serpApiKey,
-            github = settings.githubToken
-        )
-
         searchJob = viewModelScope.launch {
+            // libphonenumber loads its metadata on first use, and the prefs and
+            // history are disk-backed; keep all of it off the main thread.
+            val info = withContext(Dispatchers.Default) { OsintEngine.analyzeOffline(number, region) }
+            _state.update { it.copy(phoneInfo = info) }
+
+            val (keys, recent) = withContext(Dispatchers.IO) {
+                history.add(
+                    HistoryEntry(
+                        number = info.input,
+                        region = region,
+                        label = info.international ?: info.input,
+                        timestampMillis = System.currentTimeMillis()
+                    )
+                )
+                ApiKeys(
+                    numverify = settings.numverifyKey,
+                    serpApi = settings.serpApiKey,
+                    github = settings.githubToken
+                ) to history.entries()
+            }
+            _state.update { it.copy(history = recent) }
+
             OsintEngine.runSources(info, keys).collect { result ->
                 _state.update { it.copy(sources = it.sources + (result.id to result)) }
             }
