@@ -31,13 +31,34 @@ class PhoneAnalyzerTest {
     }
 
     @Test
-    fun `identifies line type and location for a known landline`() {
+    fun `geocodes a US number and reports the NANP-ambiguous line type`() {
         val info = PhoneAnalyzer.analyze("+1 650 253 0000", "US")
 
         assertTrue(info.valid)
         assertEquals("+16502530000", info.e164)
-        assertNotNull("expected a geocoded location", info.location)
+        assertEquals("Mountain View, CA", info.location)
+        // North American numbering does not separate landline from mobile,
+        // so this is the most specific answer available.
+        assertEquals("Fixed line or mobile", info.lineType)
+    }
+
+    @Test
+    fun `identifies a landline where the country distinguishes one`() {
+        val info = PhoneAnalyzer.analyze("+44 20 7183 8750", "GB")
+
+        assertTrue(info.valid)
         assertEquals("Fixed line", info.lineType)
+        assertEquals("London", info.location)
+    }
+
+    @Test
+    fun `identifies a mobile number and its carrier`() {
+        val info = PhoneAnalyzer.analyze("987 654 321", "PE")
+
+        assertTrue(info.valid)
+        assertEquals("+51987654321", info.e164)
+        assertEquals("Mobile", info.lineType)
+        assertNotNull("expected the carrier mapper to resolve a name", info.carrier)
     }
 
     @Test
@@ -49,10 +70,13 @@ class PhoneAnalyzerTest {
     }
 
     @Test
-    fun `a wrong-length number is parsed but not valid`() {
+    fun `a wrong-length number parses but is not valid`() {
         val info = PhoneAnalyzer.analyze("+1 650 253", "US")
 
         assertFalse(info.valid)
+        assertFalse(info.possible)
+        // libphonenumber answers "Etc/Unknown" here; that is noise, not a time zone.
+        assertTrue("Etc/Unknown should be filtered out", info.timezones.isEmpty())
     }
 
     @Test
