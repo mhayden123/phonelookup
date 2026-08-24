@@ -46,11 +46,14 @@ fun SourceCard(
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember(result.id) { mutableStateOf(false) }
+    // null = the user has not decided, so fall back to the auto rule. Tracking the
+    // override separately is what lets an auto-opened card still be collapsed.
+    var userExpanded by remember(result.id) { mutableStateOf<Boolean?>(null) }
     val hasDetail = result.facts.isNotEmpty() || result.findings.isNotEmpty()
 
     // Auto-open the card that actually found something worth reading.
-    val effectivelyExpanded = expanded || (result.status == SourceStatus.OK && result.findings.size <= 3)
+    val autoExpand = result.status == SourceStatus.OK && result.findings.size <= 3
+    val effectivelyExpanded = userExpanded ?: autoExpand
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -61,7 +64,7 @@ fun SourceCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = hasDetail) { expanded = !effectivelyExpanded }
+                .clickable(enabled = hasDetail) { userExpanded = !effectivelyExpanded }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
