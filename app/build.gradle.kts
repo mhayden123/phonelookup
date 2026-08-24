@@ -75,4 +75,5 @@ dependencies {
     implementation(libs.libphonenumber.geocoder)
     implementation(libs.libphonenumber.carrier)
     debugImplementation(libs.androidx.ui.tooling)
+    testImplementation(libs.junit)
 }
